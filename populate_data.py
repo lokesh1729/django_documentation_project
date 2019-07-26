@@ -6,14 +6,17 @@ import django
 try:
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_documentation_project.settings")
     django.setup()
-    from library.models import Author, Book, Publisher, Store
-    from weblog.models import BlogAuthor
-    from weblog.models import Blog, Entry
+    from library.models import Author, Book, Publisher, Store, City
+    from weblog.models import BlogAuthor, Blog, Entry
 except django.core.exceptions.ImproperlyConfigured as exc:
     raise exc
 
 
 def populate_data():
+    # Cities
+    city = City.objects.create(name="Hyderabad")
+    city2 = City.objects.create(name="Bangalore")
+
     # Authors
     author = Author.objects.create(name="Lokesh", age=25)
     author2 = Author.objects.create(name="Brahmareddy", age=26)
@@ -25,11 +28,11 @@ def populate_data():
     author8 = Author.objects.create(name="Mahesh", age=32)
     
     # Publishers
-    publisher = Publisher.objects.create(name="mcgrawhill")
-    publisher2 = Publisher.objects.create(name="pearson")
-    publisher3 = Publisher.objects.create(name="penguin")
-    publisher4 = Publisher.objects.create(name="macmillan")
-    publisher5 = Publisher.objects.create(name="cambridge")
+    publisher = Publisher.objects.create(name="mcgrawhill", city=city)
+    publisher2 = Publisher.objects.create(name="pearson", city=city2)
+    publisher3 = Publisher.objects.create(name="penguin", city=city2)
+    publisher4 = Publisher.objects.create(name="macmillan", city=city)
+    publisher5 = Publisher.objects.create(name="cambridge", city=city2)
 
     # Books
     book = Book.objects.create(name="My Experiences of Coding Interview", pages=250, price=254.56, rating=4.5, publisher=publisher, pubdate=datetime.date(2019, 3, 23))
