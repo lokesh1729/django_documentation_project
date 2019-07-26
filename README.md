@@ -89,7 +89,7 @@ SELECT "library_book"."id",
 ##### multiple arguments can be passed, if nothing passed, relationships are automatically resolved
 
 #### import note about select_related
-> select_related works by creating an SQL join and including the fields of the related object in the SELECT statement
+> :warning: select_related works by creating an SQL join and including the fields of the related object in the SELECT statement
 
 ## Using select_related and annotate
 
@@ -239,6 +239,82 @@ Execution time: 0.000329s [Database: default]
 <QuerySet [<Book: My Experiences of Coding Interview (Lokesh, Brahmareddy)>, <Book: Cracking Coding Interview (Ganesh, Aneesh, Mahesh)>, <Book: My Experiences of Coding Interview2 (Brahmareddy, Suresh, Ramakrishna)>, <Book: My Experiences of Coding Interview3 (Lokesh, Ganesh, Aneesh, Mahesh)>, <Book: My Experiences of Coding Interview4 (Siddarth, Ganesh, Suresh)>, <Book: My Experiences of Coding Interview5 (Lokesh, Siddarth, Aneesh, Ramakrishna)>, <Book: My Experiences of Coding Interview6 (Lokesh, Brahmareddy, Siddarth, Suresh)>, <Book: My Experiences of Coding Interview7 (Siddarth, Ganesh, Ramakrishna)>, <Book: My Experiences of Coding Interview8 (Brahmareddy, Aneesh, Mahesh)>, <Book: My Experiences of Coding Interview9 (Ramakrishna, Mahesh)>, <Book: My Experiences of Coding Interview10 (Mahesh)>]>
 ```
 
+#### following multiple relations
+
+```python
+In [7]: stores = Store.objects.prefetch_related('books__authors')
+
+In [8]: stores
+Out[8]: SELECT "library_store"."id",
+       "library_store"."name"
+  FROM "library_store"
+ LIMIT 21
+
+
+Execution time: 0.000251s [Database: default]
+
+SELECT ("library_store_books"."store_id") AS "_prefetch_related_val_store_id",
+       "library_book"."id",
+       "library_book"."name",
+       "library_book"."pages",
+       "library_book"."price",
+       "library_book"."rating",
+       "library_book"."publisher_id",
+       "library_book"."pubdate"
+  FROM "library_book"
+ INNER JOIN "library_store_books"
+    ON ("library_book"."id" = "library_store_books"."book_id")
+ WHERE "library_store_books"."store_id" IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
+
+
+Execution time: 0.000238s [Database: default]
+
+SELECT ("library_book_authors"."book_id") AS "_prefetch_related_val_book_id",
+       "library_author"."id",
+       "library_author"."name",
+       "library_author"."age"
+  FROM "library_author"
+ INNER JOIN "library_book_authors"
+    ON ("library_author"."id" = "library_book_authors"."author_id")
+ WHERE "library_book_authors"."book_id" IN (1, 3, 5, 8, 10, 4, 6, 9, 7, 11)
+
+
+Execution time: 0.000307s [Database: default]
+```
+
+### Difference between `select_related` and `prefetch_related`
+
+> `select_related` makes JOIN whereas `prefetch_related` makes multiple queries with IN clauses.
+
+#### example:
+
+##### for the first example in `select_related`, if we use `prefetch_related`,
+the following queries fires...
+
+```python
+In [2]: Book.objects.prefetch_related('publisher')
+Out[2]: SELECT "library_book"."id",
+       "library_book"."name",
+       "library_book"."pages",
+       "library_book"."price",
+       "library_book"."rating",
+       "library_book"."publisher_id",
+       "library_book"."pubdate"
+  FROM "library_book"
+ LIMIT 21
+
+
+Execution time: 0.000186s [Database: default]
+
+SELECT "library_publisher"."id",
+       "library_publisher"."name",
+       "library_publisher"."city_id"
+  FROM "library_publisher"
+ WHERE "library_publisher"."id" IN (1, 2, 3)
+
+
+Execution time: 0.000134s [Database: default]
+```
 
 ## Aggregations and Annotations
 
