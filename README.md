@@ -89,7 +89,9 @@ SELECT "library_book"."id",
 ##### multiple arguments can be passed, if nothing passed, relationships are automatically resolved
 
 #### import note about select_related
-> :warning: select_related works by creating an SQL join and including the fields of the related object in the SELECT statement
+> :warning: select_related works by creating an SQL join and including the fields of the related object in the SELECT statement. For this reason, select_related gets the related objects in the same database query
+
+select_related is limited to single-valued relationships - foreign key and one-to-one.
 
 ## Using select_related and annotate
 
@@ -172,6 +174,12 @@ Execution time: 0.000227s [Database: default]
 # prefetch_related
 
 https://docs.djangoproject.com/en/2.2/ref/models/querysets/#prefetch-related
+
+prefetch_related, on the other hand, does a separate lookup for each
+relationship, and does the ‘joining’ in Python. This allows it to prefetch
+many-to-many and many-to-one objects, which cannot be done using
+select_related, in addition to the foreign key and one-to-one relationships
+that are supported by select_related
 
 #### without prefetch_related
 
