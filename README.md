@@ -282,6 +282,118 @@ SELECT ("library_book_authors"."book_id") AS "_prefetch_related_val_book_id",
 Execution time: 0.000307s [Database: default]
 ```
 
+
+ ### how prefetch_related saves lot of queries
+
+ #### without prefetch_related, for each store it makes JOIN with `library_store_books`
+
+ ```python
+ In [18]: Store.objects.annotate(min_price=Min('books__price'), max_price=Max('books__price'))
+Out[18]: SELECT "library_store"."id",
+       "library_store"."name",
+       CAST(MIN("library_book"."price") AS NUMERIC) AS "min_price",
+       CAST(MAX("library_book"."price") AS NUMERIC) AS "max_price"
+  FROM "library_store"
+  LEFT OUTER JOIN "library_store_books"
+    ON ("library_store"."id" = "library_store_books"."store_id")
+  LEFT OUTER JOIN "library_book"
+    ON ("library_store_books"."book_id" = "library_book"."id")
+ GROUP BY "library_store"."id",
+          "library_store"."name"
+ LIMIT 21
+
+
+Execution time: 0.000205s [Database: default]
+
+SELECT "library_book"."id",
+       "library_book"."name",
+       "library_book"."pages",
+       "library_book"."price",
+       "library_book"."rating",
+       "library_book"."publisher_id",
+       "library_book"."pubdate"
+  FROM "library_book"
+ INNER JOIN "library_store_books"
+    ON ("library_book"."id" = "library_store_books"."book_id")
+ WHERE "library_store_books"."store_id" = 1
+
+
+Execution time: 0.000229s [Database: default]
+
+SELECT "library_book"."id",
+       "library_book"."name",
+       "library_book"."pages",
+       "library_book"."price",
+       "library_book"."rating",
+       "library_book"."publisher_id",
+       "library_book"."pubdate"
+  FROM "library_book"
+ INNER JOIN "library_store_books"
+    ON ("library_book"."id" = "library_store_books"."book_id")
+ WHERE "library_store_books"."store_id" = 2
+
+
+Execution time: 0.000089s [Database: default]
+
+SELECT "library_book"."id",
+       "library_book"."name",
+       "library_book"."pages",
+       "library_book"."price",
+       "library_book"."rating",
+       "library_book"."publisher_id",
+       "library_book"."pubdate"
+  FROM "library_book"
+ INNER JOIN "library_store_books"
+    ON ("library_book"."id" = "library_store_books"."book_id")
+ WHERE "library_store_books"."store_id" = 3
+
+
+Execution time: 0.000080s [Database: default]
+
+Execution time: 0.000088s [Database: default]
+
+<QuerySet [<Store: store1 (My Experiences of Coding Interview, My Experiences of Coding Interview2, My Experiences of Coding Interview4, My Experiences of Coding Interview7, My Experiences of Coding Interview9)>, <Store: store2 (My Experiences of Coding Interview3, My Experiences of Coding Interview4, My Experiences of Coding Interview5, My Experiences of Coding Interview7, My Experiences of Coding Interview8)>, <Store: store3 (My Experiences of Coding Interview2, My Experiences of Coding Interview6, My Experiences of Coding Interview9, My Experiences of Coding Interview10)>]>
+ ```
+
+ #### with prefetch
+
+ ```python
+ In [19]: Store.objects.prefetch_related('books').annotate(min_price=Min('books__price'), max_price=Max('books__price'))
+Out[19]: SELECT "library_store"."id",
+       "library_store"."name",
+       CAST(MIN("library_book"."price") AS NUMERIC) AS "min_price",
+       CAST(MAX("library_book"."price") AS NUMERIC) AS "max_price"
+  FROM "library_store"
+  LEFT OUTER JOIN "library_store_books"
+    ON ("library_store"."id" = "library_store_books"."store_id")
+  LEFT OUTER JOIN "library_book"
+    ON ("library_store_books"."book_id" = "library_book"."id")
+ GROUP BY "library_store"."id",
+          "library_store"."name"
+ LIMIT 21
+
+
+Execution time: 0.000107s [Database: default]
+
+SELECT ("library_store_books"."store_id") AS "_prefetch_related_val_store_id",
+       "library_book"."id",
+       "library_book"."name",
+       "library_book"."pages",
+       "library_book"."price",
+       "library_book"."rating",
+       "library_book"."publisher_id",
+       "library_book"."pubdate"
+  FROM "library_book"
+ INNER JOIN "library_store_books"
+    ON ("library_book"."id" = "library_store_books"."book_id")
+ WHERE "library_store_books"."store_id" IN (1, 2, 3, 4, 5)
+
+
+Execution time: 0.000353s [Database: default]
+
+<QuerySet [<Store: store1 (My Experiences of Coding Interview, My Experiences of Coding Interview2, My Experiences of Coding Interview4, My Experiences of Coding Interview7, My Experiences of Coding Interview9)>, <Store: store2 (My Experiences of Coding Interview3, My Experiences of Coding Interview4, My Experiences of Coding Interview5, My Experiences of Coding Interview7, My Experiences of Coding Interview8)>, <Store: store3 (My Experiences of Coding Interview2, My Experiences of Coding Interview6, My Experiences of Coding Interview9, My Experiences of Coding Interview10)>, <Store: store4 (My Experiences of Coding Interview, My Experiences of Coding Interview2, My Experiences of Coding Interview3, My Experiences of Coding Interview5, My Experiences of Coding Interview6)>, <Store: store5 (My Experiences of Coding Interview2, My Experiences of Coding Interview3, My Experiences of Coding Interview5, My Experiences of Coding Interview6, My Experiences of Coding Interview10)>]>
+```
+
 ### Difference between `select_related` and `prefetch_related`
 
 > `select_related` makes JOIN whereas `prefetch_related` makes multiple queries with IN clauses.
@@ -512,117 +624,6 @@ SELECT "library_store"."id",
           "library_store"."name"
  LIMIT 21
  ```
-
- ### how prefetch_related saves lot of queries
-
- #### without prefetch_related, for each store it makes JOIN with `library_store_books`
-
- ```python
- In [18]: Store.objects.annotate(min_price=Min('books__price'), max_price=Max('books__price'))
-Out[18]: SELECT "library_store"."id",
-       "library_store"."name",
-       CAST(MIN("library_book"."price") AS NUMERIC) AS "min_price",
-       CAST(MAX("library_book"."price") AS NUMERIC) AS "max_price"
-  FROM "library_store"
-  LEFT OUTER JOIN "library_store_books"
-    ON ("library_store"."id" = "library_store_books"."store_id")
-  LEFT OUTER JOIN "library_book"
-    ON ("library_store_books"."book_id" = "library_book"."id")
- GROUP BY "library_store"."id",
-          "library_store"."name"
- LIMIT 21
-
-
-Execution time: 0.000205s [Database: default]
-
-SELECT "library_book"."id",
-       "library_book"."name",
-       "library_book"."pages",
-       "library_book"."price",
-       "library_book"."rating",
-       "library_book"."publisher_id",
-       "library_book"."pubdate"
-  FROM "library_book"
- INNER JOIN "library_store_books"
-    ON ("library_book"."id" = "library_store_books"."book_id")
- WHERE "library_store_books"."store_id" = 1
-
-
-Execution time: 0.000229s [Database: default]
-
-SELECT "library_book"."id",
-       "library_book"."name",
-       "library_book"."pages",
-       "library_book"."price",
-       "library_book"."rating",
-       "library_book"."publisher_id",
-       "library_book"."pubdate"
-  FROM "library_book"
- INNER JOIN "library_store_books"
-    ON ("library_book"."id" = "library_store_books"."book_id")
- WHERE "library_store_books"."store_id" = 2
-
-
-Execution time: 0.000089s [Database: default]
-
-SELECT "library_book"."id",
-       "library_book"."name",
-       "library_book"."pages",
-       "library_book"."price",
-       "library_book"."rating",
-       "library_book"."publisher_id",
-       "library_book"."pubdate"
-  FROM "library_book"
- INNER JOIN "library_store_books"
-    ON ("library_book"."id" = "library_store_books"."book_id")
- WHERE "library_store_books"."store_id" = 3
-
-
-Execution time: 0.000080s [Database: default]
-
-Execution time: 0.000088s [Database: default]
-
-<QuerySet [<Store: store1 (My Experiences of Coding Interview, My Experiences of Coding Interview2, My Experiences of Coding Interview4, My Experiences of Coding Interview7, My Experiences of Coding Interview9)>, <Store: store2 (My Experiences of Coding Interview3, My Experiences of Coding Interview4, My Experiences of Coding Interview5, My Experiences of Coding Interview7, My Experiences of Coding Interview8)>, <Store: store3 (My Experiences of Coding Interview2, My Experiences of Coding Interview6, My Experiences of Coding Interview9, My Experiences of Coding Interview10)>]>
- ```
-
- #### with prefetch
-
- ```python
- In [19]: Store.objects.prefetch_related('books').annotate(min_price=Min('books__price'), max_price=Max('books__price'))
-Out[19]: SELECT "library_store"."id",
-       "library_store"."name",
-       CAST(MIN("library_book"."price") AS NUMERIC) AS "min_price",
-       CAST(MAX("library_book"."price") AS NUMERIC) AS "max_price"
-  FROM "library_store"
-  LEFT OUTER JOIN "library_store_books"
-    ON ("library_store"."id" = "library_store_books"."store_id")
-  LEFT OUTER JOIN "library_book"
-    ON ("library_store_books"."book_id" = "library_book"."id")
- GROUP BY "library_store"."id",
-          "library_store"."name"
- LIMIT 21
-
-
-Execution time: 0.000107s [Database: default]
-
-SELECT ("library_store_books"."store_id") AS "_prefetch_related_val_store_id",
-       "library_book"."id",
-       "library_book"."name",
-       "library_book"."pages",
-       "library_book"."price",
-       "library_book"."rating",
-       "library_book"."publisher_id",
-       "library_book"."pubdate"
-  FROM "library_book"
- INNER JOIN "library_store_books"
-    ON ("library_book"."id" = "library_store_books"."book_id")
- WHERE "library_store_books"."store_id" IN (1, 2, 3, 4, 5)
-
-
-Execution time: 0.000353s [Database: default]
-
-<QuerySet [<Store: store1 (My Experiences of Coding Interview, My Experiences of Coding Interview2, My Experiences of Coding Interview4, My Experiences of Coding Interview7, My Experiences of Coding Interview9)>, <Store: store2 (My Experiences of Coding Interview3, My Experiences of Coding Interview4, My Experiences of Coding Interview5, My Experiences of Coding Interview7, My Experiences of Coding Interview8)>, <Store: store3 (My Experiences of Coding Interview2, My Experiences of Coding Interview6, My Experiences of Coding Interview9, My Experiences of Coding Interview10)>, <Store: store4 (My Experiences of Coding Interview, My Experiences of Coding Interview2, My Experiences of Coding Interview3, My Experiences of Coding Interview5, My Experiences of Coding Interview6)>, <Store: store5 (My Experiences of Coding Interview2, My Experiences of Coding Interview3, My Experiences of Coding Interview5, My Experiences of Coding Interview6, My Experiences of Coding Interview10)>]>
-```
 
 ### Annotate
 
